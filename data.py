@@ -1,11 +1,13 @@
 import random
 
-import torch
-from torch.utils.data import DataLoader, Dataset
-from pycocotools.coco import COCO
 import cv2
-from transform import random_horizontal_flip, totensor, normalize, pad
+import torch
 import torch.nn.functional as F
+from pycocotools.coco import COCO
+from torch.utils.data import DataLoader, Dataset
+
+from transform import random_horizontal_flip, totensor, normalize, pad
+
 
 class CocoDataset(Dataset):
     '''
@@ -146,15 +148,16 @@ class CocoDataset(Dataset):
 class DataIterator():
 
     def __init__(self,
-                 img_path='/Users/nick/datasets/coco2017/images',
+                 path='/Users/nick/datasets/coco2017',
                  resize=(640, 1024),
                  max_size=1333,
                  batch_size=2,
                  stride=128,
-                 annotation_path='/Users/nick/datasets/coco2017/annotations',
                  training=True):
         self.resize = resize
         self.max_size = max_size
+        img_path = path + '/images'
+        annotation_path = path + '/annotations'
         self.dataset = CocoDataset(img_path=img_path,
                                    resize=resize,
                                    max_size=max_size,
@@ -166,32 +169,33 @@ class DataIterator():
         self.dataloader = DataLoader(self.dataset,
                                      batch_size=batch_size,
                                      collate_fn=self.dataset.collate_fn,
+                                     shuffle=False,
                                      num_workers=2,
                                      pin_memory=True)
         self.training = training
 
-        def __len__(self):
-            return len(self.dataloader)
+    def __len__(self):
+        return len(self.dataloader)
 
-        def __iter__(self):
-            for output in self.dataloader:
-                if self.training:
-                    data, target = output
-                else:
-                    data, ids, ratio = output
+    def __iter__(self):
+        for output in self.dataloader:
+            if self.training:
+                data, target = output
+            else:
+                data, ids, ratio = output
 
+            if torch.cuda.is_available():
+                data = data.cuda()
+
+            if self.training:
                 if torch.cuda.is_available():
-                    data = data.cuda()
-
-                if self.training:
-                    if torch.cuda.is_available():
-                        target = target.cuda()
-                    yield data, target
-                else:
-                    if torch.cuda.is_available():
-                        ids = ids.cuda()
-                        ratio = ratio.cuda()
-                    yield data, ids, ratio
+                    target = target.cuda()
+                yield data, target
+            else:
+                if torch.cuda.is_available():
+                    ids = ids.cuda()
+                    ratio = ratio.cuda()
+                yield data, ids, ratio
 
 
 
