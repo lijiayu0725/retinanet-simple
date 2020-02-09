@@ -1,10 +1,11 @@
 import random
+from contextlib import redirect_stdout
 
 import cv2
 import torch
 import torch.nn.functional as F
 from pycocotools.coco import COCO
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
 from transform import random_horizontal_flip, totensor, normalize, pad
 
@@ -34,7 +35,8 @@ class CocoDataset(Dataset):
         self.training = training
         self.stride = stride
         self.transform = [random_horizontal_flip, totensor, normalize, pad] if training else [totensor, normalize, pad]
-        self.coco = COCO(annotation_path)
+        with redirect_stdout(None):
+            self.coco = COCO(annotation_path)
         self.ids = list(self.coco.imgs.keys())
         self.categories_inv = {k: i for i, k in enumerate(self.coco.getCatIds())}
 
@@ -153,7 +155,9 @@ class DataIterator():
                  max_size=1333,
                  batch_size=2,
                  stride=128,
-                 training=True):
+                 training=True,
+                 shuffle=False,
+                 dist=False):
         self.resize = resize
         self.max_size = max_size
         img_path = path + '/images'
@@ -166,12 +170,15 @@ class DataIterator():
                                    training=training)
         self.ids = self.dataset.ids
         self.coco = self.dataset.coco
+        self.sampler = DistributedSampler(self.dataset) if dist else None
+
         self.dataloader = DataLoader(self.dataset,
                                      batch_size=batch_size,
                                      collate_fn=self.dataset.collate_fn,
-                                     shuffle=False,
+                                     shuffle=shuffle,
                                      num_workers=2,
-                                     pin_memory=True)
+                                     pin_memory=True,
+                                     sampler=self.sampler)
         self.training = training
 
     def __len__(self):
@@ -185,16 +192,16 @@ class DataIterator():
                 data, ids, ratio = output
 
             if torch.cuda.is_available():
-                data = data.cuda()
+                data = data.cuda(non_blocking=True)
 
             if self.training:
                 if torch.cuda.is_available():
-                    target = target.cuda()
+                    target = target.cuda(non_blocking=True)
                 yield data, target
             else:
                 if torch.cuda.is_available():
-                    ids = ids.cuda()
-                    ratio = ratio.cuda()
+                    ids = ids.cuda(non_blocking=True)
+                    ratio = ratio.cuda(non_blocking=True)
                 yield data, ids, ratio
 
 

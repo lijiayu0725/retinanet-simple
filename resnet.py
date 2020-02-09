@@ -83,9 +83,9 @@ class ResNet(nn.Module):
 
     def initialize(self):
         self.load_state_dict(torch.load(self.state_dict_path), strict=False)
-        print('ResNet50 load state dict finished!')
 
     def forward(self, x):
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)

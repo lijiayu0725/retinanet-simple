@@ -27,7 +27,7 @@ class RetinaNet(nn.Module):
         def make_head(out_size):
             layers = []
             for _ in range(4):
-                layers += [nn.Conv2d(256, 256, 3, padding=1), nn.ReLU()]
+                layers += [nn.Conv2d(256, 256, 3, padding=1), nn.ReLU(inplace=True)]
             layers += [nn.Conv2d(256, out_size, 3, padding=1)]
             return nn.Sequential(*layers)
 

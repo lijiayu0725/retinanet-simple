@@ -32,7 +32,7 @@ class FPN(nn.Module):
                     nn.init.constant_(layer.bias, val=0)
 
         self.apply(init_layer)
-        print('FPN initialized!')
+
         self.features.initialize()
 
     def forward(self, x):
