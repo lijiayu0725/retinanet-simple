@@ -8,7 +8,7 @@ from loss import FocalLoss, SmoothL1Loss
 
 
 class RetinaNet(nn.Module):
-    def __init__(self, classes=80, stride=32,
+    def __init__(self, classes=80, stride=128,
                  state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth'):
         super(RetinaNet, self).__init__()
         self.backbone = ResNet50FPN(state_dict_path=state_dict_path, stride=stride)

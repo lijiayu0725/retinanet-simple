@@ -47,7 +47,7 @@ class ResNet(nn.Module):
 
     def __init__(self, layers=(3, 4, 6, 3), outputs=(3, 4, 5),
                  state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth',
-                 stride=32):
+                 stride=128):
         super(ResNet, self).__init__()
         self.stride = stride
         self.outputs = outputs

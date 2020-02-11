@@ -9,7 +9,7 @@ from data import DataIterator
 from model import RetinaNet
 
 batch_size = 16
-stride = 32
+stride = 128
 resize = 800
 max_size = 1333
 resnet_dir = '/home/lijiayu/.cache/torch/checkpoints/resnet50-19c8e357.pth'

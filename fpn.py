@@ -54,7 +54,7 @@ class FPN(nn.Module):
         return p3, p4, p5, p6, p7
 
 
-def ResNet50FPN(state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth', stride=32):
+def ResNet50FPN(state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth', stride=128):
     return FPN(ResNet(layers=[3, 4, 6, 3], outputs=[3, 4, 5], state_dict_path=state_dict_path), stride=stride)
 
 

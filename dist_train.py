@@ -11,11 +11,12 @@ from torch.optim.lr_scheduler import LambdaLR
 from data import DataIterator
 from model import RetinaNet
 
-warmup = 500
+warmup = 1000
+warmup_ratio = 0.1
 gamma = 0.1
 milestores = [8, 11]
 batch_size = 16
-stride = 32
+stride = 128
 lr = 0.01
 weight_decay = 1e-4
 momentem = 0.9
@@ -27,7 +28,8 @@ coco_dir = '/data/datasets/coco2017'
 mb_to_gb_factor = 1024 ** 3
 dist = True
 world_size = 8
-loss_scale = 512.
+loss_scale = 128.
+max_norm = 35
 
 
 def train(model, rank=0):
@@ -49,7 +51,7 @@ def train(model, rank=0):
         print('finish loading dataset!')
 
     def schedule_warmup(i):
-        return 0.9 * i / warmup + 0.1
+        return (1. - warmup_ratio) * i / warmup + warmup_ratio
 
     def schedule(epoch):
         return gamma ** len([m for m in milestores if m <= epoch])
@@ -70,7 +72,7 @@ def train(model, rank=0):
             with amp.scale_loss(cls_loss + box_loss, optimizer) as scaled_loss:
                 scaled_loss.backward()
 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 35)
+            # torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), max_norm)
             optimizer.step()
             if epoch == 1 and i <= warmup:
                 scheduler_warmup.step(i)

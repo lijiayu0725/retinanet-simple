@@ -1,6 +1,7 @@
 import random
 from contextlib import redirect_stdout
 
+import cv2
 import torch
 import torch.nn.functional as F
 from pycocotools.coco import COCO
@@ -78,19 +79,19 @@ class CocoDataset(Dataset):
         # load image
         id = self.ids[idx]
         image_name = self.coco.loadImgs(id)[0]['file_name']
-        image = Image.open('{}/{}'.format(self.path, image_name)).convert('RGB')
+        image = cv2.imread('{}/{}'.format(self.path, image_name))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # random resize shorter edge of image
         resize = self.resize
         if type(self.resize) in [list, tuple]:
             resize = random.randint(min(self.resize), max(self.resize))
 
-        ratio = resize / min(image.size)
-        if ratio * max(image.size) > self.max_size:
-            ratio = self.max_size / max(image.size)
-
-        image = image.resize((int(ratio * d) for d in image.size), Image.BILINEAR)
-
+        ratio = resize / min(image.shape[:2])
+        if ratio * max(image.shape[:2]) > self.max_size:
+            ratio = self.max_size / max(image.shape[:2])
+        new_size = int(image.shape[1] * ratio), int(image.shape[0] * ratio)
+        image = cv2.resize(image, new_size, cv2.INTER_LINEAR)
         data = image
         if self.training:
             # get annotations
@@ -145,6 +146,7 @@ class CocoDataset(Dataset):
         else:
             ratios = torch.FloatTensor(ratios).view(-1, 1, 1)
             return data, torch.IntTensor(idxs), ratios
+
 
 class DataIterator():
 

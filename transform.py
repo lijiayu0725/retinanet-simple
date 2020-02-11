@@ -1,21 +1,20 @@
 import random
 
+import cv2
 import torch
 import torch.nn.functional as F
-from PIL import Image
 
 
 def random_horizontal_flip(image, boxes):
     if random.randint(0, 1):
-        image = image.transpose(Image.FLIP_LEFT_RIGHT)
-        boxes[:, 0] = image.size[0] - boxes[:, 0] - boxes[:, 2]
+        image = cv2.flip(image, 1)
+        boxes[:, 0] = image.shape[0] - boxes[:, 0] - boxes[:, 2]
     return image, boxes
 
 
 def totensor(image, boxes=None):
-    data = torch.ByteTensor(torch.ByteStorage.from_buffer(image.tobytes()))
-    data = data.float().div(255).view(*image.size[::-1], len(image.mode))
-    data = data.permute(2, 0, 1)
+    data = torch.from_numpy(image.transpose(2, 0, 1))
+    data = data.float() / 255
     if boxes is not None:
         return data, boxes
     else:
