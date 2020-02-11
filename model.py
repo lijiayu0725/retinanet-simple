@@ -2,17 +2,18 @@ import math
 import torch
 from torch import nn
 
-from anchor import generate_anchors, snap_to_anchors
+from anchor import generate_anchors, snap_to_anchors, decode, nms
 from fpn import ResNet50FPN
 from loss import FocalLoss, SmoothL1Loss
 
 
 class RetinaNet(nn.Module):
-    def __init__(self, classes=80, state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth'):
+    def __init__(self, classes=80, stride=32,
+                 state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth'):
         super(RetinaNet, self).__init__()
-        self.backbone = ResNet50FPN(state_dict_path=state_dict_path)
+        self.backbone = ResNet50FPN(state_dict_path=state_dict_path, stride=stride)
         self.name = 'RetinaNet'
-        self.ratios = [0.5, 1.0, 2.0]
+        self.ratios = [1.0, 2.0, 0.5]
         self.scales = [4 * 2 ** (i / 3) for i in range(3)]
         self.anchors = {}
         self.classes = classes
@@ -71,6 +72,20 @@ class RetinaNet(nn.Module):
 
         if self.training:
             return self.loss(x, cls_heads, box_heads, targets.float())
+
+        cls_heads = [cls_head.sigmoid() for cls_head in cls_heads]
+
+        # inference post-processing
+        decoded = []
+        for cls_head, box_head in zip(cls_heads, box_heads):
+            stride = x.shape[-1] // cls_head.shape[-1]
+            # generate each level's anchors
+            if stride not in self.anchors:
+                self.anchors[stride] = generate_anchors(stride, self.ratios, self.scales)
+            # decode and filter boxes
+            decoded.append(decode(cls_head, box_head, stride, self.threshold, self.top_n, self.anchors[stride]))
+        decoded = [torch.cat(tensors, 1) for tensors in zip(*decoded)]
+        return nms(*decoded, self.nms, self.detections)
 
     def loss(self, x, cls_heads, box_heads, targets):
         cls_losses, box_losses, fg_targets = [], [], []

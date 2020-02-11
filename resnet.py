@@ -46,9 +46,10 @@ class ResNet(nn.Module):
     'Deep Residual Network - https://arxiv.org/abs/1512.03385'
 
     def __init__(self, layers=(3, 4, 6, 3), outputs=(3, 4, 5),
-                 state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth'):
+                 state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth',
+                 stride=32):
         super(ResNet, self).__init__()
-        self.stride = 128
+        self.stride = stride
         self.outputs = outputs
         self.state_dict_path = state_dict_path
         block = Bottleneck

@@ -1,7 +1,6 @@
 import random
 from contextlib import redirect_stdout
 
-import cv2
 import torch
 import torch.nn.functional as F
 from pycocotools.coco import COCO
@@ -28,7 +27,7 @@ class CocoDataset(Dataset):
                  training=True):
         super(CocoDataset, self).__init__()
         img_path = img_path + ('/train2017' if training else '/val2017')
-        annotation_path = annotation_path + ('/instances_train2017.json' if training else 'instances_val2017.json')
+        annotation_path = annotation_path + ('/instances_train2017.json' if training else '/instances_val2017.json')
         self.path = img_path
         self.resize = resize
         self.max_size = max_size
@@ -79,19 +78,19 @@ class CocoDataset(Dataset):
         # load image
         id = self.ids[idx]
         image_name = self.coco.loadImgs(id)[0]['file_name']
-        image = cv2.imread('{}/{}'.format(self.path, image_name))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = Image.open('{}/{}'.format(self.path, image_name)).convert('RGB')
 
         # random resize shorter edge of image
         resize = self.resize
         if type(self.resize) in [list, tuple]:
             resize = random.randint(min(self.resize), max(self.resize))
 
-        ratio = resize / min(image.shape[:2])
-        if ratio * max(image.shape[:2]) > self.max_size:
-            ratio = self.max_size / max(image.shape[:2])
+        ratio = resize / min(image.size)
+        if ratio * max(image.size) > self.max_size:
+            ratio = self.max_size / max(image.size)
 
-        image = cv2.resize(image, tuple([int(s * ratio) for s in image.shape[:2]]), cv2.INTER_LINEAR)
+        image = image.resize((int(ratio * d) for d in image.size), Image.BILINEAR)
+
         data = image
         if self.training:
             # get annotations
@@ -100,7 +99,7 @@ class CocoDataset(Dataset):
 
             # transform for training image
             for f in self.transform:
-                    data, boxes = f(data, boxes)
+                data, boxes = f(data, boxes)
 
             target = torch.cat([boxes, categories], dim=1)
             return data, target
@@ -154,6 +153,7 @@ class DataIterator():
                  resize=(640, 1024),
                  max_size=1333,
                  batch_size=2,
+                 world_size=8,
                  stride=128,
                  training=True,
                  shuffle=False,
@@ -171,7 +171,7 @@ class DataIterator():
         self.ids = self.dataset.ids
         self.coco = self.dataset.coco
         self.sampler = DistributedSampler(self.dataset) if dist else None
-
+        batch_size = batch_size // world_size if dist else batch_size
         self.dataloader = DataLoader(self.dataset,
                                      batch_size=batch_size,
                                      collate_fn=self.dataset.collate_fn,
@@ -212,4 +212,3 @@ if __name__ == '__main__':
     data1 = dataset.__getitem__(0)
     data2 = dataset.__getitem__(1)
     res = dataset.collate_fn([data1, data2])
-

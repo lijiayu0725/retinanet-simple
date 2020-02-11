@@ -7,10 +7,10 @@ from resnet import ResNet
 class FPN(nn.Module):
     'Feature Pyramid Network - https://arxiv.org/abs/1612.03144'
 
-    def __init__(self, features):
+    def __init__(self, features, stride=32):
         super().__init__()
 
-        self.stride = 128
+        self.stride = stride
         self.features = features
 
         channels = [512, 1024, 2048]
@@ -54,8 +54,8 @@ class FPN(nn.Module):
         return p3, p4, p5, p6, p7
 
 
-def ResNet50FPN(state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth'):
-    return FPN(ResNet(layers=[3, 4, 6, 3], outputs=[3, 4, 5], state_dict_path=state_dict_path))
+def ResNet50FPN(state_dict_path='/Users/nick/.cache/torch/checkpoints/resnet50-19c8e357.pth', stride=32):
+    return FPN(ResNet(layers=[3, 4, 6, 3], outputs=[3, 4, 5], state_dict_path=state_dict_path), stride=stride)
 
 
 if __name__ == '__main__':

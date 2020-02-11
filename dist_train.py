@@ -14,18 +14,20 @@ from model import RetinaNet
 warmup = 500
 gamma = 0.1
 milestores = [8, 11]
-batch_size = 2
+batch_size = 16
 stride = 32
 lr = 0.01
 weight_decay = 1e-4
 momentem = 0.9
 epochs = 12
 shuffle = False
-resize = (640, 1024)
+resize = 800
 resnet_dir = '/home/lijiayu/.cache/torch/checkpoints/resnet50-19c8e357.pth'
 coco_dir = '/data/datasets/coco2017'
 mb_to_gb_factor = 1024 ** 3
 dist = True
+world_size = 8
+loss_scale = 512.
 
 
 def train(model, rank=0):
@@ -35,19 +37,19 @@ def train(model, rank=0):
     model, optimizer = amp.initialize(model, optimizer,
                                       opt_level='O2',
                                       keep_batchnorm_fp32=True,
-                                      loss_scale=512.)
+                                      loss_scale=loss_scale)
 
     model = DistributedDataParallel(model)
     model.train()
     if rank == 0:
         print('preparing dataset...')
     data_iterator = DataIterator(path=coco_dir, batch_size=batch_size, stride=stride, shuffle=shuffle, resize=resize,
-                                 dist=dist)
+                                 dist=dist, world_size=world_size)
     if rank == 0:
         print('finish loading dataset!')
 
     def schedule_warmup(i):
-        return 0.7 * i / warmup + 0.3
+        return 0.9 * i / warmup + 0.1
 
     def schedule(epoch):
         return gamma ** len([m for m in milestores if m <= epoch])
@@ -73,7 +75,11 @@ def train(model, rank=0):
             if epoch == 1 and i <= warmup:
                 scheduler_warmup.step(i)
 
-            cls_loss, box_loss = cls_loss.mean().item(), box_loss.mean().item()
+            cls_loss, box_loss = cls_loss.mean().clone(), box_loss.mean().clone()
+            torch.distributed.all_reduce(cls_loss)
+            torch.distributed.all_reduce(box_loss)
+            cls_loss /= world_size
+            box_loss /= world_size
             if rank == 0:
                 cls_losses.append(cls_loss)
                 box_losses.append(box_loss)
@@ -117,7 +123,7 @@ if __name__ == '__main__':
     if args.distributed:
         torch.cuda.set_device(args.local_rank)
         torch.distributed.init_process_group(backend='nccl', init_method='env://')
-    model = RetinaNet(state_dict_path=resnet_dir)
+    model = RetinaNet(state_dict_path=resnet_dir, stride=stride)
     if args.local_rank == 0:
         print('FPN initialized!')
     train(model, args.local_rank)
