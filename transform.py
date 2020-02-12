@@ -8,7 +8,7 @@ import torch.nn.functional as F
 def random_horizontal_flip(image, boxes):
     if random.randint(0, 1):
         image = cv2.flip(image, 1)
-        boxes[:, 0] = image.shape[0] - boxes[:, 0] - boxes[:, 2]
+        boxes[:, 0] = image.shape[1] - boxes[:, 0] - boxes[:, 2]
     return image, boxes
 
 

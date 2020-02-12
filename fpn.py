@@ -7,7 +7,7 @@ from resnet import ResNet
 class FPN(nn.Module):
     'Feature Pyramid Network - https://arxiv.org/abs/1612.03144'
 
-    def __init__(self, features, stride=32):
+    def __init__(self, features, stride=128):
         super().__init__()
 
         self.stride = stride

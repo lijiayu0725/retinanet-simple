@@ -10,7 +10,7 @@ from model import RetinaNet
 
 batch_size = 16
 stride = 128
-resize = 800
+resize = 1024
 max_size = 1333
 resnet_dir = '/home/lijiayu/.cache/torch/checkpoints/resnet50-19c8e357.pth'
 coco_dir = '/data/datasets/coco2017'
