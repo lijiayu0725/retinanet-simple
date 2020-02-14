@@ -10,19 +10,23 @@ from model import RetinaNet
 
 batch_size = 16
 stride = 128
-resize = 1024
+resize = 800
 max_size = 1333
 resnet_dir = '/home/lijiayu/.cache/torch/checkpoints/resnet50-19c8e357.pth'
 coco_dir = '/data/datasets/coco2017'
 mb_to_gb_factor = 1024 ** 3
 dist = True
-model_state_dict_dir = 'checkpoints/final.pth'
 training = False
 detection_file = 'detections.json'
 world_size = 8
 
 
-def infer(model, rank=0):
+def infer(model, args):
+    rank = args.local_rank
+    epoch_name = args.epoch
+    model_state_dict_dir = 'checkpoints/final.pth' if epoch_name == 'final' else 'checkpoints/epoch-{}.pth'.format(
+        epoch_name)
+
     load = torch.load(model_state_dict_dir, map_location='cpu')
     load = {k.replace('module.', ''): v for k, v in load.items()}
     model_state_dict = load
@@ -106,10 +110,11 @@ def infer(model, rank=0):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--local_rank", default=0, type=int)
+    parser.add_argument("--epoch", default='final', type=str)
     args = parser.parse_args()
     torch.cuda.set_device(args.local_rank)
     torch.distributed.init_process_group(backend='nccl', init_method='env://')
     model = RetinaNet(state_dict_path=resnet_dir, stride=stride)
     if args.local_rank == 0:
         print('FPN initialized!')
-    infer(model, args.local_rank)
+    infer(model, args)

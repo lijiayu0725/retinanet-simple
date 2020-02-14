@@ -14,7 +14,7 @@ from model import RetinaNet
 warmup = 1000
 warmup_ratio = 0.1
 gamma = 0.1
-milestores = [8, 11, 16, 22]
+milestores = [8, 11]
 batch_size = 16
 stride = 128
 lr = 0.01
@@ -22,17 +22,18 @@ weight_decay = 1e-4
 momentem = 0.9
 epochs = 12
 shuffle = False
-resize = 1024
+resize = (640, 1024)
 resnet_dir = '/home/lijiayu/.cache/torch/checkpoints/resnet50-19c8e357.pth'
 coco_dir = '/data/datasets/coco2017'
 mb_to_gb_factor = 1024 ** 3
 dist = True
 world_size = 8
-loss_scale = 512.
+loss_scale = 128.
 max_norm = 35
 
 
 def train(model, rank=0):
+
     model.cuda()
     optimizer = SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=momentem)
 
@@ -72,7 +73,7 @@ def train(model, rank=0):
             with amp.scale_loss(cls_loss + box_loss, optimizer) as scaled_loss:
                 scaled_loss.backward()
 
-            torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), max_norm)
+            # torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), max_norm)
             optimizer.step()
             if epoch == 1 and i <= warmup:
                 scheduler_warmup.step(i)
